@@ -34,6 +34,8 @@ def svm_loss_naive(W, X, y, reg):
         continue
       margin = scores[j] - correct_class_score + 1 # note delta = 1
       if margin > 0:
+        dW[:, j] += X[i, :]
+        dW[:, y[i]] -= X[i, :]
         loss += margin
 
   # Right now the loss is a sum over all training examples, but we want it
@@ -51,7 +53,8 @@ def svm_loss_naive(W, X, y, reg):
   # loss is being computed. As a result you may need to modify some of the    #
   # code above to compute the gradient.                                       #
   #############################################################################
-
+  dW /= num_train
+  dW += 2 * reg * W
 
   return loss, dW
 
@@ -70,7 +73,11 @@ def svm_loss_vectorized(W, X, y, reg):
   # Implement a vectorized version of the structured SVM loss, storing the    #
   # result in loss.                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+  scores = X @ W
+  scores = np.maximum(0, scores - (scores[np.arange(num_train), y] - 1)[:, None])
+  scores[np.arange(num_train), y] = 0
+  loss = np.sum(scores) / num_train + reg * np.sum(W * W)
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -85,7 +92,10 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  pass
+  count = scores
+  count[count > 0] = 1
+  count[np.arange(num_train), y] = -np.sum(count, axis=1)
+  dW = (count.T @ X).T / num_train + 2 * reg * W
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
