@@ -390,7 +390,19 @@ def conv_forward_naive(x, w, b, conv_param):
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
-    pass
+    pad = conv_param['pad']
+    stride = conv_param['stride']
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+    x = np.pad(x, ((0, ), (0, ), (pad, ), (pad, )), 'constant')
+    Ho = 1 + (H + 2 * pad - HH) // stride
+    Wo = 1 + (W + 2 * pad - WW) // stride
+    out = np.empty((N, F, Ho, Wo))
+    for i in range(N):
+        for j in range(F):
+            for ho in range(Ho):
+                for wo in range(Wo):
+                    out[i, j, ho, wo] = np.sum(x[i, :, ho*stride : ho*stride + HH, wo*stride : wo*stride + WW] * w[j, :]) + b[j]
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -415,7 +427,25 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    N, F, Ho, Wo = dout.shape
+    x, w, b, conv_param = cache
+    _, _, HH, WW = w.shape
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    
+    db = np.empty_like(b)
+    for i in range(F):
+        db[i] = np.sum(dout[:, i, :, :])
+        
+    dw = np.zeros_like(w)
+    dx = np.zeros_like(x)
+    for i in range(N):
+        for j in range(F):
+            for ho in range(Ho):
+                for wo in range(Wo):
+                    dw[j, :] += dout[i, j, ho, wo] * x[i, :, ho*stride : ho*stride+HH, wo*stride : wo*stride + WW]
+                    dx[i, :, ho*stride : ho*stride+HH, wo*stride : wo*stride + WW] += dout[i, j, ho, wo] * w[j, :]
+    dx = dx[:, :, pad:-pad, pad:-pad]
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
