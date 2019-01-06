@@ -267,7 +267,7 @@ def lstm_step_forward(x, prev_h, prev_c, Wx, Wh, b):
     g = np.tanh(a[:, 3*H:])
     next_c = f * prev_c + i * g
     next_h = o * np.tanh(next_c)
-    cache = i, f, o, g, prev_c, next_c, x, Wx, prev_h, Wh
+    cache = x, i, f, o, g, prev_c, next_c, Wx, prev_h, Wh
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -299,7 +299,7 @@ def lstm_step_backward(dnext_h, dnext_c, cache):
     # HINT: For sigmoid and tanh you can compute local derivatives in terms of  #
     # the output value from the nonlinearity.                                   #
     #############################################################################
-    i, f, o, g, prev_c, next_c, x, Wx, prev_h, Wh = cache
+    x, i, f, o, g, prev_c, next_c, Wx, prev_h, Wh = cache
     dsigmoid = lambda o: o * (1 - o)
     dtanh = lambda o: 1 - o ** 2
     do = dnext_h * np.tanh(next_c)
@@ -354,7 +354,15 @@ def lstm_forward(x, h0, Wx, Wh, b):
     # TODO: Implement the forward pass for an LSTM over an entire timeseries.   #
     # You should use the lstm_step_forward function that you just defined.      #
     #############################################################################
-    pass
+    N, T, _ = x.shape
+    H = h0.shape[1]
+    h = np.empty((N, T, H))
+    prev_c = np.zeros((N, H))
+    cache = {}
+    prev_h = h0
+    for t in range(T):
+        prev_h, prev_c, cache[t] = lstm_step_forward(x[:, t, :], prev_h, prev_c, Wx, Wh, b)
+        h[:, t, :] = prev_h
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -382,7 +390,21 @@ def lstm_backward(dh, cache):
     # TODO: Implement the backward pass for an LSTM over an entire timeseries.  #
     # You should use the lstm_step_backward function that you just defined.     #
     #############################################################################
-    pass
+    N, T, H = dh.shape
+    D = cache[0][0].shape[1]
+    dc = np.zeros((N, H))
+    dWx = np.zeros((D, 4 * H))
+    dWh = np.zeros((H, 4 * H))
+    db = np.zeros((4 * H, ))
+    dx = np.empty((N, T, D))
+    dh_t = np.zeros((N, H))
+    for t in reversed(range(T)):
+        dcurrent_h = dh[:, t, :] + dh_t
+        dx[:, t, :], dh_t, dc, dWx_t, dWh_t, db_t = lstm_step_backward(dcurrent_h, dc, cache[t])
+        dWx += dWx_t
+        dWh += dWh_t
+        db += db_t
+        dh0 = dh_t
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
